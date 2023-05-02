@@ -24,8 +24,8 @@ func NewDatabase() (*Database, error) {
 
 	// db connection
 	dataSourceName := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", dbHost, dbPort, dbUser, dbPassword, dbName, sslMode)
+	
 	db, err := sql.Open("postgres", dataSourceName)
-
 	if err != nil {
 		log.Fatalf("Connection failed %v", err)
 	}

@@ -1,12 +1,14 @@
-package controller
+package controllers
 
 import (
+	"fmt"
+	"go_inven_ctrl/entity"
+	"go_inven_ctrl/usecase"
 	"net/http"
-	"strconv"
+	"os"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"github.com/raynaaliyya/ctrl-wh-st/models"
-	"github.com/raynaaliyya/ctrl-wh-st/usecase"
 )
 
 type WarehouseTeamController struct {
@@ -20,59 +22,115 @@ func NewWarehouseTeamController(u usecase.WarehouseTeamUsecase) *WarehouseTeamCo
 }
 
 func (c *WarehouseTeamController) FindEmployees(ctx *gin.Context) {
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	email := claims["email"].(string)
+	role := claims["role"].(string)
+	if role != "wh" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "you have no access to this role",
+		})
+		return
+	}
+
 	res := c.usecase.FindEmployees()
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data":       res,
+		"login with": email,
+	})
 }
 
 func (c *WarehouseTeamController) FindEmployeeById(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, "Invalid employee ID")
-		return // return kosong untuk memberhentikan fungsi
-	}
-
-	res := c.usecase.FindEmployeeById(id)
-	ctx.JSON(http.StatusOK, res)
-}
-
-func (c *WarehouseTeamController) Login(ctx *gin.Context) {
-	var employee models.EmployeeReq
-	if err := ctx.ShouldBindJSON(&employee); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	role := claims["role"].(string)
+	if role != "wh" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "you have no access to this role",
+		})
 		return
 	}
 
-	u, err := c.usecase.Login(&employee)
+	id := ctx.Param("id")
+
+	photo := c.usecase.FindEmployeeById(id)
+	filepath := fmt.Sprintf("D:/Documents/coding/final-project-enigma/goventory-control/goventory-control/images/%s", photo)
+
+	file, err := os.Open(filepath)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
-	ctx.SetCookie("jwt", u.AccessToken, 60*60*24, "/", "localhost", false, true)
-	ctx.JSON(http.StatusOK, u)
+	fileBytes := make([]byte, fileInfo.Size())
+	_, err = file.Read(fileBytes)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "image/jpeg", fileBytes)
 }
 
 func (c *WarehouseTeamController) Register(ctx *gin.Context) {
-	var newEmployee models.WarehouseTeam
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	email := claims["email"].(string)
+	role := claims["role"].(string)
+	if role != "wh" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "you have no access to this role",
+		})
+		return
+	}
+
+	var newEmployee entity.WarehouseTeam
 
 	// request body
-	if err := ctx.ShouldBindJSON(&newEmployee); err != nil {
-		ctx.JSON(http.StatusBadRequest, "Invalid Input")
+	if err := ctx.ShouldBind(&newEmployee); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
 		return
 	}
 
-	res, err := c.usecase.Register(&newEmployee)
+	file, err := ctx.FormFile("photo")
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Input Photo"})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, res)
+	filename := file.Filename
+	newEmployee.Photo = filename
+
+	if errFile := ctx.SaveUploadedFile(file, fmt.Sprintf("./images/%s", filename)); errFile != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	res := c.usecase.Register(&newEmployee)
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"data":       res,
+		"login with": email,
+	})
 }
 
 func (c *WarehouseTeamController) Edit(ctx *gin.Context) {
-	var employee models.WarehouseTeam
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	email := claims["email"].(string)
+	role := claims["role"].(string)
+	if role != "wh" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "you have no access to this role",
+		})
+		return
+	}
+
+	var employee entity.WarehouseTeam
 
 	if err := ctx.BindJSON(&employee); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data. Please check the request body and try again."})
@@ -80,16 +138,37 @@ func (c *WarehouseTeamController) Edit(ctx *gin.Context) {
 	}
 
 	res := c.usecase.Edit(&employee)
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data":       res,
+		"login with": email,
+	})
 }
 
 func (c *WarehouseTeamController) Unreg(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Param("id"))
+	claims := ctx.MustGet("claims").(jwt.MapClaims)
+	email := claims["email"].(string)
+	role := claims["role"].(string)
+	if role != "wh" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error": "you have no access to this role",
+		})
+		return
+	}
+
+	id := ctx.Param("id")
+
+	photo := c.usecase.FindEmployeeById(id)
+	filePath := fmt.Sprintf("D:/Documents/coding/final-project-enigma/goventory-control/goventory-control/images/%s", photo)
+
+	err := os.Remove(filePath)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, "Invalid employee ID")
+		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
 	res := c.usecase.Unreg(id)
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data":       res,
+		"login with": email,
+	})
 }

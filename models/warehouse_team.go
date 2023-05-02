@@ -1,7 +1,7 @@
 package models
 
 type WarehouseTeam struct {
-	ID       int    `json:"id"`
+	ID       string `json:"id"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -16,14 +16,14 @@ type EmployeeReq struct {
 }
 
 type CreateEmployeeRes struct {
-	ID    int    `json:"id"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
 type LoginEmployeeRes struct {
 	AccessToken string
-	ID          int    `json:"id"`
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Email       string `json:"email"`
 }

@@ -37,7 +37,7 @@ func (u *warehouseTeamUsecase) FindEmployeeById(id int) any {
 }
 
 type MyJWTClaim struct {
-	ID    int    `json:"id"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	jwt.Claims

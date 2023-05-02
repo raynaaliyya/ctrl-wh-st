@@ -22,7 +22,7 @@ type warehouseTeamRepo struct {
 }
 
 func NewWarehouseTeamRepo(db *sql.DB) WarehouseTeamRepo {
-	repo := new(warehouseTeamRepo)
+	repo := &warehouseTeamRepo //returm structnya krn sudah mengimplementassi semua kontraknya
 	repo.db = db
 
 	return repo
@@ -73,7 +73,7 @@ func (r *warehouseTeamRepo) GetById(id int) any {
 		log.Println(err)
 	}
 
-	if employeeInDb.ID == 0 {
+	if employeeInDb.ID == "" {
 		return "employee not found"
 	}
 

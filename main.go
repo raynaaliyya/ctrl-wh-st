@@ -17,17 +17,17 @@ func main() {
 	}
 
 	// Dependencies Warehouse Team
-	warehouseTeamRepo := repository.NewWarehouseTeamRepo(db.GetDB())
-	warehouseTeamUsecase := usecase.NewWarehouseTeamUsecase(warehouseTeamRepo)
-	warehouseTeamController := controller.NewWarehouseTeamController(warehouseTeamUsecase)
+	// warehouseTeamRepo := repository.NewWarehouseTeamRepo(db.GetDB())
+	// warehouseTeamUsecase := usecase.NewWarehouseTeamUsecase(warehouseTeamRepo)
+	// warehouseTeamController := controller.NewWarehouseTeamController(warehouseTeamUsecase)
 
 	// Dependencies Product Warehouse
-	// productWhRepo := repository.NewProductWhRepo(db.GetDB())
-	// productWhUsecase := usecase.NewProductWhUsecase(productWhRepo)
-	// productWhController := controller.NewProductWhController(productWhUsecase)
+	productWhRepo := repository.NewProductWhRepo(db.GetDB())
+	productWhUsecase := usecase.NewProductWhUsecase(productWhRepo)
+	productWhController := controller.NewProductWhController(productWhUsecase)
 
-	router.InitRouterEmployee(warehouseTeamController)
-	// router.InitRouterProduct(productWhController)
+	// router.InitRouterEmployee(warehouseTeamController)
+	router.InitRouterProduct(productWhController)
 	router.RunServer(":8080")
 
 }
